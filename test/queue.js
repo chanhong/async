@@ -63,6 +63,24 @@ describe('queue', function(){
         });
     });
 
+    ['push', 'unshift', 'pushAsync', 'unshiftAsync'].forEach(method => {
+        it(`waits for subsequent work after ${method} of an empty array`, async () => {
+            let completed = false;
+            const q = async.queue((task, callback) => {
+                async.setImmediate(() => {
+                    completed = true;
+                    callback();
+                });
+            });
+            const drained = q.drain();
+            q[method]([]);
+            q.push(1);
+            await drained;
+            expect(completed).to.equal(true);
+            expect(q.idle()).to.equal(true);
+        });
+    });
+
     it('default concurrency', (done) => {
         var call_order = [],
             delays = [50,10,180,10];
@@ -170,7 +188,6 @@ describe('queue', function(){
         })
         q.pushAsync([3, 4]).map(p => p.then(() => calls.push('arr')))
         q.drain(() => setTimeout(() => {
-            console.log('drain')
             expect(calls).to.eql([1, 2, 'arr', 'arr'])
             done()
         }))
@@ -190,7 +207,6 @@ describe('queue', function(){
         })
         q.unshiftAsync([3, 4]).map(p => p.then(() => calls.push('arr')))
         q.drain(() => setTimeout(() => {
-            console.log('drain')
             expect(calls).to.eql(['arr', 'arr', 2, 1])
             done()
         }))
